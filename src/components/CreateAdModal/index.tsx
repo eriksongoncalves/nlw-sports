@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import { Check, GameController } from 'phosphor-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Checkbox from '@radix-ui/react-checkbox'
 import * as ToggleGroup from '@radix-ui/react-toggle-group'
+import axios from 'axios'
 
 import { Input } from '../Form/Input'
 
@@ -24,14 +25,36 @@ const daysOfWeek = [
 export const CreateAdModal = () => {
   const [games, setGames] = useState<Games[]>([])
   const [weekDays, setWeekDays] = useState<string[]>([])
+  const [useVoiceChannel, setUseVoiceChannel] = useState(false)
 
   useEffect(() => {
-    fetch('http://localhost:3333/games')
-      .then(response => response.json())
-      .then(data => {
-        setGames(data)
-      })
+    axios.get<Games[]>('http://localhost:3333/games').then(res => {
+      setGames(res.data)
+    })
   }, [])
+
+  const handleCreateAd = async (e: FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const formData = new FormData(e.target as HTMLFormElement)
+      const data = Object.fromEntries(formData)
+
+      await axios.post(`http://localhost:3333/games/${data.game}/ads`, {
+        name: data.name,
+        discord: data.discord,
+        yearsPaying: Number(data.yearsPlaying),
+        hourStart: data.hourStart,
+        hourEnd: data.hourEnd,
+        weekDays,
+        useVoiceChannel
+      })
+
+      alert('Alerta criado com sucesso!')
+    } catch {
+      alert('Erro ao criar anúncio.')
+    }
+  }
 
   return (
     <Dialog.Portal>
@@ -42,7 +65,7 @@ export const CreateAdModal = () => {
           Publique um anúncio
         </Dialog.Title>
 
-        <form className="mt-8 flex flex-col gap-4">
+        <form onSubmit={handleCreateAd} className="mt-8 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label htmlFor="game" className="font-semibold">
               Qual o game?
@@ -50,6 +73,7 @@ export const CreateAdModal = () => {
 
             <select
               id="game"
+              name="game"
               className="bg-zinc-900 py-3 px-4 rounded text-sm placeholder:text-zinc-500 appearance-none"
               defaultValue=""
             >
@@ -58,25 +82,42 @@ export const CreateAdModal = () => {
               </option>
 
               {games.map(game => (
-                <option key={game.id}>{game.title}</option>
+                <option key={game.id} value={game.id}>
+                  {game.title}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-2">
             <label htmlFor="name">Seu nome (ou nickname)</label>
-            <Input type="text" placeholder="Come te chamam dentro do game?" />
+            <Input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Come te chamam dentro do game?"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
               <label htmlFor="yearsPlaying">Joga a quantos anos?</label>
-              <Input type="number" placeholder="Tudo bem ser ZERO" />
+              <Input
+                id="yearsPlaying"
+                name="yearsPlaying"
+                type="number"
+                placeholder="Tudo bem ser ZERO"
+              />
             </div>
 
             <div className="flex flex-col gap-2">
               <label htmlFor="discord">Qual seu discord?</label>
-              <Input type="text" placeholder="Usuario#0000" />
+              <Input
+                id="discord"
+                name="discord"
+                type="text"
+                placeholder="Usuario#0000"
+              />
             </div>
           </div>
 
@@ -110,14 +151,29 @@ export const CreateAdModal = () => {
             <div className="flex flex-col gap-2 flex-1">
               <label htmlFor="hourStart">Qual horário do dia?</label>
               <div className="grid grid-cols-2 gap-2">
-                <Input type="time" placeholder="De" />
-                <Input type="time" placeholder="Até" />
+                <Input
+                  id="hourStart"
+                  name="hourStart"
+                  type="time"
+                  placeholder="De"
+                />
+
+                <Input
+                  id="hourEnd"
+                  name="hourEnd"
+                  type="time"
+                  placeholder="Até"
+                />
               </div>
             </div>
           </div>
 
           <label className="mt-2 flex items-center gap-2 text-sm">
-            <Checkbox.Root className="w-6 h-6 p-1 rounded bg-zinc-900 ">
+            <Checkbox.Root
+              className="w-6 h-6 p-1 rounded bg-zinc-900"
+              checked={useVoiceChannel}
+              onCheckedChange={checked => setUseVoiceChannel(checked === true)}
+            >
               <Checkbox.Indicator>
                 <Check className="w-4 h-4 text-emerald-400" />
               </Checkbox.Indicator>
